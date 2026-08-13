@@ -25,6 +25,9 @@ char *ICSCoreCopyStatusJSON(void);
 char *ICSCoreCopyBackupsJSON(void);
 void ICSCoreFreeString(char *value);
 
+void ICSInstallGameStateDetector(void);
+bool ICSGameMenuIsActive(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -33,6 +33,8 @@ the optional rootless package to load it into Isaac.
 - Versioned local and remote backups with retention and restore
 - Same-directory atomic local replacement with final hash verification
 - Native UIKit account, sync, conflict, backup, log, and invisible-button UI
+- Menu-only cloud settings button and panel that hide automatically during a
+  run and return after Isaac reaches a menu
 - Steam rich presence showing AppID `250900` while Isaac is active
 - Offline play without blocking game startup
 
