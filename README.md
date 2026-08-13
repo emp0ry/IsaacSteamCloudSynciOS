@@ -1,7 +1,6 @@
 # IsaacSteamCloudSynciOS
 
-Native two-way Steam Cloud synchronization for **The Binding of Isaac: Rebirth
-+ Repentance on iOS**.
+Native two-way Steam Cloud synchronization for **The Binding of Isaac: Repentance on iOS**.
 
 IsaacSteamCloudSynciOS connects directly to Steam from inside Isaac. It can
 pull the Steam version before play and publish a verified iPhone save when the
