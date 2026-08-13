@@ -1,6 +1,6 @@
 Package: com.isaaccloudsync
 Name: IsaacSteamCloudSynciOS
-Version: 1.1.3
+Version: 1.1.4
 Architecture: iphoneos-arm64
 Description: Portable two-way Steam Cloud synchronization for The Binding of Isaac: Rebirth.
 Maintainer: emp0ry

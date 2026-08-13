@@ -5,6 +5,7 @@
 static NSString *const ICSInvisibleButtonDefaultsKey = @"IsaacCloudSyncInvisibleMenuButton";
 static BOOL ICSQRPresentationScheduled = NO;
 static BOOL ICSQRDismissedByUser = NO;
+static __weak UINavigationController *ICSActivePanelNavigation;
 
 @interface ICSQRCodeViewController : UIViewController
 @property(nonatomic) UIImageView *codeImageView;
@@ -509,11 +510,13 @@ static NSDictionary *ICSFindSlot(NSArray *items, NSUInteger slot) {
 @end
 
 static void ICSPresentPanel(void) {
+    if (!ICSGameMenuIsActive()) return;
     UIViewController *top = ICSTopController();
     if (top == nil || [top isKindOfClass:ICSPanelViewController.class]) return;
     ICSPanelViewController *panel = [[ICSPanelViewController alloc] initWithStyle:UITableViewStyleInsetGrouped];
     UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:panel];
     navigation.modalPresentationStyle = UIModalPresentationFormSheet;
+    ICSActivePanelNavigation = navigation;
     [top presentViewController:navigation animated:YES completion:nil];
 }
 
@@ -538,6 +541,22 @@ static const NSInteger ICSStartupGateTag = 0x495347;
 
 static BOOL ICSPhaseIsBusy(NSString *phase) {
     return [@[@"syncing", @"connecting", @"forcing", @"resolving", @"restoring"] containsObject:phase];
+}
+
+static void ICSUpdateSettingsVisibility(void) {
+    UIViewController *top = ICSTopController();
+    UIWindow *window = top.view.window;
+    BOOL menuActive = ICSGameMenuIsActive();
+    UIButton *button = (UIButton *)[window viewWithTag:0x495343];
+    button.hidden = !menuActive;
+    if (menuActive) return;
+
+    UINavigationController *navigation = ICSActivePanelNavigation;
+    if (navigation.presentingViewController != nil) {
+        [navigation dismissViewControllerAnimated:YES completion:^{
+            if (ICSActivePanelNavigation == navigation) ICSActivePanelNavigation = nil;
+        }];
+    }
 }
 
 static void ICSRemoveStartupGate(void) {
@@ -601,6 +620,7 @@ static void ICSUpdateStartupGate(void) {
 }
 
 static void ICSRefreshAttention(void) {
+    ICSUpdateSettingsVisibility();
     NSDictionary *status = ICSReadDictionary(ICSCoreCopyStatusJSON);
     NSString *phase = status[@"phase"];
     UIButton *button = (UIButton *)[ICSTopController().view.window viewWithTag:0x495343];
@@ -608,7 +628,8 @@ static void ICSRefreshAttention(void) {
     BOOL needsRestart = [phase isEqualToString:@"restart_required"];
     button.layer.borderColor = needsChoice ? UIColor.systemRedColor.CGColor
         : needsRestart ? UIColor.systemOrangeColor.CGColor : UIColor.systemBlueColor.CGColor;
-    if (needsChoice && !ICSAttentionPresented && ICSTopController() != nil) {
+    if (ICSGameMenuIsActive() && needsChoice && !ICSAttentionPresented &&
+        ICSTopController() != nil) {
         ICSAttentionPresented = YES;
         ICSPresentPanel();
     }
@@ -630,6 +651,7 @@ static void ICSInstallButton(void) {
     button.accessibilityLabel = @"Open Isaac Steam Cloud iOS";
     [button addTarget:ICSButtonTarget.shared action:@selector(openPanel) forControlEvents:UIControlEventTouchUpInside];
     [window addSubview:button];
+    button.hidden = !ICSGameMenuIsActive();
     [NSLayoutConstraint activateConstraints:@[
         [button.trailingAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.trailingAnchor constant:-8],
         [button.topAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.topAnchor constant:8],
@@ -650,6 +672,11 @@ void ICSInstallUI(void) {
         [NSNotificationCenter.defaultCenter addObserverForName:@"IsaacCloudSyncPreflightFinished" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
             ICSStartupPreflightPending = NO;
             ICSRemoveStartupGate();
+            ICSRefreshAttention();
+        }];
+        [NSNotificationCenter.defaultCenter addObserverForName:@"IsaacCloudSyncGameStateChanged" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
+            ICSInstallButton();
+            ICSUpdateSettingsVisibility();
             ICSRefreshAttention();
         }];
         [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(__unused NSTimer *timer) {
