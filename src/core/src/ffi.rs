@@ -1,11 +1,15 @@
-use crate::engine::Engine;
+use crate::{achievements, engine::Engine};
 use std::{
     ffi::{CStr, CString, c_char},
     path::PathBuf,
-    sync::{Arc, OnceLock},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 static ENGINE: OnceLock<Arc<Engine>> = OnceLock::new();
+static ACHIEVEMENT_SYNC_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 fn engine() -> Option<&'static Arc<Engine>> {
     ENGINE.get()
@@ -93,6 +97,47 @@ pub unsafe extern "C" fn ICSCoreSyncNow(trigger: *const c_char) -> bool {
             .unwrap_or("manual")
     };
     engine().is_some_and(|engine| engine.automatic_sync(trigger))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn ICSCoreStageAchievementId(achievement_id: u32) -> bool {
+    achievements::stage_gamekit_id(achievement_id)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn ICSCoreSyncAchievements() -> bool {
+    if !achievements::has_staged() {
+        return true;
+    }
+    if ACHIEVEMENT_SYNC_ACTIVE
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return false;
+    }
+    std::thread::Builder::new()
+        .name("IsaacAchievementSync".to_owned())
+        .spawn(|| {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build();
+            if let Ok(runtime) = runtime {
+                let _ = runtime.block_on(achievements::sync_staged());
+            }
+            ACHIEVEMENT_SYNC_ACTIVE.store(false, Ordering::Release);
+        })
+        .map(|_| true)
+        .unwrap_or_else(|_| {
+            ACHIEVEMENT_SYNC_ACTIVE.store(false, Ordering::Release);
+            false
+        })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn ICSCoreCopyAchievementsJSON() -> *mut c_char {
+    CString::new(achievements::achievements_json())
+        .map(CString::into_raw)
+        .unwrap_or(std::ptr::null_mut())
 }
 
 #[unsafe(no_mangle)]
