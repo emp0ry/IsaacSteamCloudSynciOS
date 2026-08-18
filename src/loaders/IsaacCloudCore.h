@@ -16,7 +16,6 @@ bool ICSCoreSubmitSteamGuardCode(const char *code);
 bool ICSCoreDisconnectSteam(void);
 bool ICSCoreSetForeground(bool foreground);
 bool ICSCoreSyncNow(const char *trigger);
-bool ICSCoreStageAchievementId(uint32_t achievementID);
 bool ICSCoreSyncAchievements(void);
 char *ICSCoreCopyAchievementsJSON(void);
 void ICSCoreLog(const char *category, const char *message);
@@ -29,7 +28,6 @@ char *ICSCoreCopyBackupsJSON(void);
 void ICSCoreFreeString(char *value);
 
 void ICSInstallGameStateDetector(void);
-void ICSInstallAchievementObserver(void);
 bool ICSGameMenuIsActive(void);
 
 #ifdef __cplusplus
