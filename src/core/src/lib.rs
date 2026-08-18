@@ -1,3 +1,4 @@
+mod achievements;
 mod atomic;
 mod backups;
 mod engine;
