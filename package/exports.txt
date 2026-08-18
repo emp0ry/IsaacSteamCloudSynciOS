@@ -6,7 +6,6 @@ _ICSCoreCopyBackupsJSON
 _ICSCoreCopyStatusJSON
 _ICSCoreDisconnectSteam
 _ICSCoreSetForeground
-_ICSCoreStageAchievementId
 _ICSCoreSubmitSteamGuardCode
 _ICSCoreSyncAchievements
 _ICSCoreForce
