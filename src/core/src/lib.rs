@@ -8,6 +8,7 @@ mod keychain;
 mod local;
 mod logging;
 mod model;
+mod save_achievements;
 mod state;
 mod steam;
 mod sync_engine;
