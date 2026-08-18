@@ -9,6 +9,7 @@ use std::{
 };
 
 static ENGINE: OnceLock<Arc<Engine>> = OnceLock::new();
+static HOME: OnceLock<PathBuf> = OnceLock::new();
 static ACHIEVEMENT_SYNC_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 fn engine() -> Option<&'static Arc<Engine>> {
@@ -24,8 +25,10 @@ pub unsafe extern "C" fn ICSCoreStart(home: *const c_char) -> i32 {
         Ok(value) => value,
         Err(_) => return -2,
     };
-    match Engine::new(PathBuf::from(value)) {
+    let home_path = PathBuf::from(value);
+    match Engine::new(home_path.clone()) {
         Ok(created) => {
+            let _ = HOME.set(home_path);
             let _ = ENGINE.set(created);
             0
         }
@@ -100,15 +103,10 @@ pub unsafe extern "C" fn ICSCoreSyncNow(trigger: *const c_char) -> bool {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn ICSCoreStageAchievementId(achievement_id: u32) -> bool {
-    achievements::stage_gamekit_id(achievement_id)
-}
-
-#[unsafe(no_mangle)]
 pub extern "C" fn ICSCoreSyncAchievements() -> bool {
-    if !achievements::has_staged() {
-        return true;
-    }
+    let Some(home) = HOME.get().cloned() else {
+        return false;
+    };
     if ACHIEVEMENT_SYNC_ACTIVE
         .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
         .is_err()
@@ -116,13 +114,13 @@ pub extern "C" fn ICSCoreSyncAchievements() -> bool {
         return false;
     }
     std::thread::Builder::new()
-        .name("IsaacAchievementSync".to_owned())
-        .spawn(|| {
+        .name("IsaacSaveAchievementSync".to_owned())
+        .spawn(move || {
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build();
             if let Ok(runtime) = runtime {
-                let _ = runtime.block_on(achievements::sync_staged());
+                let _ = runtime.block_on(achievements::sync_from_local_saves(&home));
             }
             ACHIEVEMENT_SYNC_ACTIVE.store(false, Ordering::Release);
         })
