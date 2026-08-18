@@ -59,14 +59,11 @@ pub extern "C" fn ICSCoreSetForeground(foreground: bool) -> bool { engine().is_s
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ICSCoreSyncNow(trigger: *const c_char) -> bool {
     let trigger = if trigger.is_null() { "manual" } else { unsafe { CStr::from_ptr(trigger) }.to_str().unwrap_or("manual") };
-    let started = engine().is_some_and(|engine| engine.automatic_sync(trigger));
-    if started {
-        // Achievement synchronization is independent of cloud-save conflict resolution.
-        // It reads only the real local persistentgamedata save and only ADDS Steam
-        // unlocks that are missing; it never clears or overwrites Steam achievements.
-        let _ = ICSCoreSyncAchievements();
-    }
-    started
+    // Important: do NOT start a second Steam CM login for achievements here.
+    // The previous parallel launch could cause Steam to close the active Cloud
+    // session. Achievement sync remains an explicit operation until it is
+    // integrated serially through the engine's authenticated CM session.
+    engine().is_some_and(|engine| engine.automatic_sync(trigger))
 }
 
 #[unsafe(no_mangle)]
