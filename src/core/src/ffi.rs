@@ -135,7 +135,7 @@ pub unsafe extern "C" fn ICSCoreLog(category: *const c_char, message: *const c_c
 #[unsafe(no_mangle)]
 pub extern "C" fn ICSCoreResolve(slot: u8, use_local: bool) -> bool { engine().is_some_and(|engine| engine.resolve_choice(slot, use_local)) }
 #[unsafe(no_mangle)]
-pub extern "C" fn ICSCoreForce(slot: u8, use_local: bool) -> bool { engine().is_some_and(|engine| engine.force(slot, use_local, false)) }
+pub extern "C" fn ICSCoreForce(slot: u8, use_local: bool) -> bool { engine().is_some_and(|engine| engine.force(slot, use_local)) }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ICSCoreRestoreBackup(backup_id: *const c_char) -> bool {
