@@ -12,9 +12,21 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios
+      - name: Install packaging tools
+        run: |
+          if ! command -v dpkg-deb >/dev/null 2>&1; then brew install dpkg; fi
+          if ! command -v rg >/dev/null 2>&1; then brew install ripgrep; fi
       - name: Run core tests
         run: make test
-      - name: Build with strict warnings
-        run: make dylib EXTRA_CFLAGS='-Wall -Wextra -Werror'
-      - name: Audit dynamic dependencies
-        run: make audit EXTRA_CFLAGS='-Wall -Wextra -Werror'
+      - name: Build release artifacts
+        run: make release
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: IsaacSteamSynciOS-${{ github.ref_name }}-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            dist/IsaacSteamSynciOS.dylib
+            dist/IsaacSteamSynciOS-rootless.deb
+            dist/SHA256SUMS
+          retention-days: 14

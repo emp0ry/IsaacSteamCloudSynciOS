@@ -17,9 +17,6 @@ static void IsaacCloudSyncBootstrap(void) {
             return;
         }
 
-        // Start the portable pre-load operation before UIApplicationMain, but do
-        // not block the launch thread: iOS enforces a 20-second launch watchdog.
-        // The UIKit adapter gates user input until this bounded worker finishes.
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
             BOOL completed = ICSCorePreflight(ICSPrelaunchTimeoutMilliseconds);
             ICSCoreLog(

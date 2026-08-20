@@ -1,6 +1,6 @@
 /// Minimal binary KeyValues representation used by Steam PICS/app schemas.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum KVValue {
+pub enum KVValue {
     Nested(Vec<(String, KVValue)>),
     Str(String),
     Int(i32),
@@ -9,7 +9,7 @@ pub(crate) enum KVValue {
 }
 
 impl KVValue {
-    pub(crate) fn as_nested(&self) -> Option<&Vec<(String, KVValue)>> {
+    pub fn as_nested(&self) -> Option<&Vec<(String, KVValue)>> {
         if let KVValue::Nested(n) = self {
             Some(n)
         } else {
@@ -17,7 +17,7 @@ impl KVValue {
         }
     }
 
-    pub(crate) fn as_str(&self) -> Option<&str> {
+    pub fn as_str(&self) -> Option<&str> {
         if let KVValue::Str(s) = self {
             Some(s)
         } else {
@@ -25,7 +25,7 @@ impl KVValue {
         }
     }
 
-    pub(crate) fn as_u32(&self) -> Option<u32> {
+    pub fn as_u32(&self) -> Option<u32> {
         match self {
             KVValue::Int(i) => (*i >= 0).then_some(*i as u32),
             KVValue::Uint64(i) => u32::try_from(*i).ok(),
@@ -34,7 +34,7 @@ impl KVValue {
         }
     }
 
-    pub(crate) fn get(&self, key: &str) -> Option<&KVValue> {
+    pub fn get(&self, key: &str) -> Option<&KVValue> {
         self.as_nested()?
             .iter()
             .find(|(k, _)| k == key)
@@ -161,7 +161,7 @@ fn parse_binary_kv_at(data: &[u8], offset: usize) -> Option<KVValue> {
     Some(KVValue::Nested(children))
 }
 
-pub(crate) fn parse_binary_kv(data: &[u8]) -> Option<KVValue> {
+pub fn parse_binary_kv(data: &[u8]) -> Option<KVValue> {
     parse_binary_kv_at(data, 0).or_else(|| {
         // PICS package buffers prepend a little-endian version/header before
         // the Binary KV root object.

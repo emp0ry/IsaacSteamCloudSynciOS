@@ -1,5 +1,5 @@
 use crate::{
-    atomic,
+    achievements, atomic,
     backups::BackupManager,
     isaac_format::{SaveEncoding, canonical_identity_for_path, canonicalize_save},
     keychain,
@@ -406,7 +406,41 @@ impl Engine {
                 });
                 return Ok(());
             }
-            engine.run_sync(&trigger).await
+            engine.run_sync(&trigger).await?;
+            if trigger == "manual" {
+                match engine.run_achievement_sync().await {
+                    Ok(added) => engine.report_achievement_result(added),
+                    Err(error) => {
+                        let message = safe_error(&error);
+                        engine.logger.log(
+                            "error",
+                            "achievements",
+                            &format!("save-derived achievement sync failed: {message}"),
+                        );
+                        engine.update_status(|status| {
+                            if status.phase == "idle" || status.phase == "syncing" {
+                                status.phase = "idle".to_owned();
+                                status.detail = format!(
+                                    "Steam Cloud synchronized; achievement sync failed: {message}"
+                                );
+                            }
+                        });
+                    }
+                }
+            }
+            Ok(())
+        })
+    }
+
+    /// Synchronize achievements through the same serialized Steam operation
+    /// lane as UFS. This prevents a second CM login from racing the Cloud
+    /// session and potentially causing Steam to close either connection.
+    pub fn sync_achievements(self: &Arc<Self>) -> bool {
+        self.spawn_operation("syncing", |engine| async move {
+            engine.ensure_session().await?;
+            let added = engine.run_achievement_sync().await?;
+            engine.report_achievement_result(added);
+            Ok(())
         })
     }
 
@@ -683,6 +717,46 @@ impl Engine {
         cm::set_playing(session, playing).await?;
         self.update_status(|status| status.steam_playing = playing);
         Ok(())
+    }
+
+    async fn run_achievement_sync(&self) -> Result<usize> {
+        self.logger.log(
+            "info",
+            "achievements",
+            "reading unlocks from native Isaac persistent saves",
+        );
+        self.update_status(|status| {
+            if status.phase == "idle" {
+                status.phase = "syncing".to_owned();
+                status.detail = "Comparing native save achievements with Steam…".to_owned();
+            }
+        });
+        let session_guard = self.session.lock().await;
+        let session = session_guard
+            .as_ref()
+            .context("Steam session unavailable for achievement sync")?;
+        achievements::sync_from_local_saves(&self.home, session).await
+    }
+
+    fn report_achievement_result(&self, added: usize) {
+        self.logger.log(
+            "info",
+            "achievements",
+            &format!("save-derived achievement sync verified; added={added}; cleared=0"),
+        );
+        self.update_status(|status| {
+            if status.phase == "idle" || status.phase == "syncing" {
+                status.detail = if added == 0 {
+                    "Steam Cloud and save-derived achievements are synchronized".to_owned()
+                } else if added == 1 {
+                    "Steam Cloud synchronized; 1 missing save achievement added to Steam".to_owned()
+                } else {
+                    format!(
+                        "Steam Cloud synchronized; {added} missing save achievements added to Steam"
+                    )
+                };
+            }
+        });
     }
 
     fn bind_state_to_account(&self, steam_id: u64, account_name: Option<String>) -> Result<()> {

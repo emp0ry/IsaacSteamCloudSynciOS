@@ -1,11 +1,13 @@
 _ICSCoreConnectSteam
 _ICSCoreCancelSteamLogin
 _ICSCoreConnectSteamWithPassword
+_ICSCoreCopyAchievementsJSON
 _ICSCoreCopyBackupsJSON
 _ICSCoreCopyStatusJSON
 _ICSCoreDisconnectSteam
 _ICSCoreSetForeground
 _ICSCoreSubmitSteamGuardCode
+_ICSCoreSyncAchievements
 _ICSCoreForce
 _ICSCoreFreeString
 _ICSCoreLog

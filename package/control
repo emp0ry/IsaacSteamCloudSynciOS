@@ -1,11 +1,11 @@
 Package: com.isaaccloudsync
-Name: IsaacSteamCloudSynciOS
-Version: 1.1.4
+Name: IsaacSteamSynciOS
+Version: 1.2.0
 Architecture: iphoneos-arm64
-Description: Portable two-way Steam Cloud synchronization for The Binding of Isaac: Rebirth.
+Description: Portable Steam Cloud and achievement synchronization for The Binding of Isaac: Repentance on iOS.
 Maintainer: emp0ry
 Author: emp0ry
 Section: Tweaks
 Depends: ellekit
 Priority: optional
-Homepage: https://github.com/emp0ry/IsaacSteamCloudSynciOS
+Homepage: https://github.com/emp0ry/IsaacSteamSynciOS

@@ -7,11 +7,11 @@ if [[ $# -lt 1 || $# -gt 2 ]]; then
 fi
 
 input_ipa="${1:A}"
-output_ipa="${2:-${input_ipa:r}-SteamCloud.ipa}"
+output_ipa="${2:-${input_ipa:r}-SteamSync.ipa}"
 output_ipa="${output_ipa:A}"
 script_dir="${0:A:h}"
 project_root="${script_dir:h}"
-dylib="${project_root}/build/IsaacSteamCloudSynciOS.dylib"
+dylib="${project_root}/build/IsaacSteamSynciOS.dylib"
 
 [[ -f "$input_ipa" ]] || { echo "Input IPA not found: $input_ipa" >&2; exit 66; }
 [[ "$input_ipa" != "$output_ipa" ]] || { echo "Input and output IPA paths must differ" >&2; exit 64; }
@@ -27,9 +27,9 @@ if [[ ! -f "$dylib" ]]; then
   make -C "$project_root" dylib
 fi
 
-work_dir="$(mktemp -d "${TMPDIR:-/tmp}/IsaacSteamCloudSynciOS.XXXXXX")"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/IsaacSteamSynciOS.XXXXXX")"
 cleanup() {
-  if [[ -n "${work_dir:-}" && "$work_dir" == *IsaacSteamCloudSynciOS.* && -d "$work_dir" ]]; then
+  if [[ -n "${work_dir:-}" && "$work_dir" == *IsaacSteamSynciOS.* && -d "$work_dir" ]]; then
     rm -rf "$work_dir"
   fi
 }
@@ -51,9 +51,9 @@ executable="$app/$executable_name"
 [[ -f "$executable" ]] || { echo "Main executable not found: $executable" >&2; exit 66; }
 
 mkdir -p "$app/Frameworks"
-cp "$dylib" "$app/Frameworks/IsaacSteamCloudSynciOS.dylib"
-chmod 0755 "$app/Frameworks/IsaacSteamCloudSynciOS.dylib"
-python3 "$script_dir/macho-add-dylib.py" "$executable" '@executable_path/Frameworks/IsaacSteamCloudSynciOS.dylib'
+cp "$dylib" "$app/Frameworks/IsaacSteamSynciOS.dylib"
+chmod 0755 "$app/Frameworks/IsaacSteamSynciOS.dylib"
+python3 "$script_dir/macho-add-dylib.py" "$executable" '@executable_path/Frameworks/IsaacSteamSynciOS.dylib'
 
 if [[ -n "${SIGNING_IDENTITY:-}" ]]; then
   nested_signing_args=(--force --sign "$SIGNING_IDENTITY" --timestamp=none)

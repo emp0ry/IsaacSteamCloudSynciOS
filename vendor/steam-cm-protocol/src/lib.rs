@@ -11,7 +11,7 @@ pub mod emsg;
 pub mod eresult;
 pub mod error;
 pub mod friends;
-pub(crate) mod kv;
+pub mod kv;
 pub mod library;
 pub mod message;
 pub mod pics;

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.2.0 - 2026-08-20
+
+- Renamed the project and release artifacts to IsaacSteamSynciOS to reflect
+  both Steam Cloud and achievement synchronization.
+
+- Added one-way Steam achievement synchronization from native Isaac
+  `persistentgamedata` saves when the user taps **Sync Now**.
+- Added only save-derived unlocks missing from Steam; existing Steam
+  achievements and stat bits are preserved and never cleared.
+- Replaced the obsolete UserStats write with the current
+  `CMsgClientStoreUserStats2`/EMsg 5466 request, current CRC, and both SteamID
+  fields.
+- Serialized achievement and Cloud operations through the same authenticated
+  Steam session to prevent competing CM logins.
+- Added post-write read-back verification, bounded request timeouts, strict
+  save-section validation, and additive-safety regression tests.
+- Removed all runtime dependence on Game Center and added a build audit that
+  rejects GameKit/Game Center linkage.
+
 ## 1.1.4 - 2026-08-13
 
 - Added a read-only native menu/game detector for the supported Isaac build.

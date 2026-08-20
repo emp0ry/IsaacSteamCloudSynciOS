@@ -26,3 +26,30 @@ message CMsgClientGetUserStatsResponse {
 	repeated .CMsgClientGetUserStatsResponse.Stats stats = 5;
 	repeated .CMsgClientGetUserStatsResponse.Achievement_Blocks achievement_blocks = 6;
 }
+
+message CMsgClientStoreUserStats2 {
+	message Stats {
+		optional uint32 stat_id = 1;
+		optional uint32 stat_value = 2;
+	}
+
+	optional fixed64 game_id = 1;
+	optional fixed64 settor_steam_id = 2;
+	optional fixed64 settee_steam_id = 3;
+	optional uint32 crc_stats = 4;
+	optional bool explicit_reset = 5;
+	repeated .CMsgClientStoreUserStats2.Stats stats = 6;
+}
+
+message CMsgClientStoreUserStatsResponse {
+	message Stats_Failed_Validation {
+		optional uint32 stat_id = 1;
+		optional uint32 reverted_stat_value = 2;
+	}
+
+	optional fixed64 game_id = 1;
+	optional int32 eresult = 2 [default = 2];
+	optional uint32 crc_stats = 3;
+	repeated .CMsgClientStoreUserStatsResponse.Stats_Failed_Validation stats_failed_validation = 4;
+	optional bool stats_out_of_date = 5;
+}

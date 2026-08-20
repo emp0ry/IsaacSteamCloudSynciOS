@@ -16,6 +16,8 @@ bool ICSCoreSubmitSteamGuardCode(const char *code);
 bool ICSCoreDisconnectSteam(void);
 bool ICSCoreSetForeground(bool foreground);
 bool ICSCoreSyncNow(const char *trigger);
+bool ICSCoreSyncAchievements(void);
+char *ICSCoreCopyAchievementsJSON(void);
 void ICSCoreLog(const char *category, const char *message);
 bool ICSCoreResolve(uint8_t slot, bool useLocal);
 bool ICSCoreForce(uint8_t slot, bool useLocal);

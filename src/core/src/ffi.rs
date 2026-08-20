@@ -1,14 +1,47 @@
-use crate::engine::Engine;
+use crate::{achievements, engine::Engine};
 use std::{
     ffi::{CStr, CString, c_char},
     path::PathBuf,
     sync::{Arc, OnceLock},
+    time::Duration,
 };
 
 static ENGINE: OnceLock<Arc<Engine>> = OnceLock::new();
 
 fn engine() -> Option<&'static Arc<Engine>> {
     ENGINE.get()
+}
+
+fn is_transient_cm_close(engine: &Engine) -> bool {
+    let status = engine.snapshot();
+    let detail = status.detail.to_ascii_lowercase();
+    (status.phase == "error" || status.phase == "offline")
+        && (detail.contains("steam cm closed the connection")
+            || detail.contains("unexpected websocket close"))
+}
+
+fn schedule_one_transport_retry(engine: Arc<Engine>, trigger: String) {
+    let _ = std::thread::Builder::new()
+        .name("IsaacCloudCMRetry".to_owned())
+        .spawn(move || {
+            // Wait for the first engine operation to publish its terminal state
+            // and release operation_active before attempting exactly one retry.
+            for _ in 0..200 {
+                let phase = engine.snapshot().phase;
+                if phase != "syncing" && phase != "connecting" {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            if is_transient_cm_close(&engine) {
+                engine.record_host_event(
+                    "transport",
+                    "Steam CM closed during sync; reconnecting and retrying once",
+                );
+                let _ = engine.automatic_sync(&trigger);
+            }
+        });
 }
 
 #[unsafe(no_mangle)]
@@ -20,7 +53,8 @@ pub unsafe extern "C" fn ICSCoreStart(home: *const c_char) -> i32 {
         Ok(value) => value,
         Err(_) => return -2,
     };
-    match Engine::new(PathBuf::from(value)) {
+    let home_path = PathBuf::from(value);
+    match Engine::new(home_path.clone()) {
         Ok(created) => {
             let _ = ENGINE.set(created);
             0
@@ -92,7 +126,28 @@ pub unsafe extern "C" fn ICSCoreSyncNow(trigger: *const c_char) -> bool {
             .to_str()
             .unwrap_or("manual")
     };
-    engine().is_some_and(|engine| engine.automatic_sync(trigger))
+    // Cloud and save-derived achievement synchronization share the engine's
+    // single serialized operation lane and authenticated Steam CM session.
+    let Some(engine) = engine() else {
+        return false;
+    };
+    let started = engine.automatic_sync(trigger);
+    if started {
+        schedule_one_transport_retry(Arc::clone(engine), trigger.to_owned());
+    }
+    started
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn ICSCoreSyncAchievements() -> bool {
+    engine().is_some_and(|engine| engine.sync_achievements())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn ICSCoreCopyAchievementsJSON() -> *mut c_char {
+    CString::new(achievements::achievements_json())
+        .map(CString::into_raw)
+        .unwrap_or(std::ptr::null_mut())
 }
 
 #[unsafe(no_mangle)]
@@ -115,7 +170,6 @@ pub unsafe extern "C" fn ICSCoreLog(category: *const c_char, message: *const c_c
 pub extern "C" fn ICSCoreResolve(slot: u8, use_local: bool) -> bool {
     engine().is_some_and(|engine| engine.resolve_choice(slot, use_local))
 }
-
 #[unsafe(no_mangle)]
 pub extern "C" fn ICSCoreForce(slot: u8, use_local: bool) -> bool {
     engine().is_some_and(|engine| engine.force(slot, use_local))
@@ -134,7 +188,19 @@ pub unsafe extern "C" fn ICSCoreRestoreBackup(backup_id: *const c_char) -> bool 
 
 #[unsafe(no_mangle)]
 pub extern "C" fn ICSCorePreflight(timeout_ms: u64) -> bool {
-    engine().is_some_and(|engine| engine.preflight(timeout_ms))
+    let Some(engine) = engine() else {
+        return false;
+    };
+    let completed = engine.preflight(timeout_ms);
+    if is_transient_cm_close(engine) {
+        engine.record_host_event(
+            "transport",
+            "Steam CM closed during preflight; reconnecting and retrying once",
+        );
+        std::thread::sleep(Duration::from_millis(150));
+        return engine.preflight(timeout_ms);
+    }
+    completed
 }
 
 #[unsafe(no_mangle)]

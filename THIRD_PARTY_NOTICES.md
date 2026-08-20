@@ -1,6 +1,6 @@
 # Third-party notices
 
-IsaacSteamCloudSynciOS statically links Rust crates listed in `src/core/Cargo.lock`.
+IsaacSteamSynciOS statically links Rust crates listed in `src/core/Cargo.lock`.
 Their license declarations and source distributions remain authoritative.
 
 Notable direct dependencies:
