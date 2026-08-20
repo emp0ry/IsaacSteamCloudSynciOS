@@ -5,10 +5,10 @@ CORE_DIR := $(PROJECT_ROOT)/src/core
 TARGET := aarch64-apple-ios
 SDK := $(shell xcrun --sdk iphoneos --show-sdk-path)
 CLANG := $(shell xcrun --sdk iphoneos --find clang)
-CORE_LIBRARY := $(CORE_DIR)/target/$(TARGET)/release/libisaac_cloud_core.a
-DYLIB := $(PROJECT_ROOT)/build/IsaacSteamCloudSynciOS.dylib
+CORE_LIBRARY := $(CORE_DIR)/target/$(TARGET)/release/libisaac_steam_core.a
+DYLIB := $(PROJECT_ROOT)/build/IsaacSteamSynciOS.dylib
 DEB_STAGE := $(PROJECT_ROOT)/package/stage
-DEB := $(PROJECT_ROOT)/packages/IsaacSteamCloudSynciOS-rootless.deb
+DEB := $(PROJECT_ROOT)/packages/IsaacSteamSynciOS-rootless.deb
 MIN_IOS ?= 15.0
 EXTRA_CFLAGS ?=
 DIST := $(PROJECT_ROOT)/dist
@@ -35,7 +35,7 @@ dylib: core
 	"$(CLANG)" -isysroot "$(SDK)" -arch arm64 -miphoneos-version-min="$(MIN_IOS)" \
 		-fobjc-arc -fmodules -O2 $(EXTRA_CFLAGS) -dynamiclib \
 		-I"$(PROJECT_ROOT)/src/loaders" \
-		-Wl,-install_name,@rpath/IsaacSteamCloudSynciOS.dylib \
+		-Wl,-install_name,@rpath/IsaacSteamSynciOS.dylib \
 		-Wl,-dead_strip -Wl,-fatal_warnings \
 		-Wl,-exported_symbols_list,"$(PROJECT_ROOT)/package/exports.txt" \
 		$(OBJC_SOURCES) "$(CORE_LIBRARY)" \
@@ -43,7 +43,7 @@ dylib: core
 		-lz -liconv -lc++ -o "$(DYLIB)"
 	xcrun strip -x "$(DYLIB)"
 	@if command -v codesign >/dev/null 2>&1; then \
-		codesign --force --sign - --timestamp=none --identifier com.emp0ry.isaacsteamcloudsyncios.dylib "$(DYLIB)"; \
+		codesign --force --sign - --timestamp=none --identifier com.emp0ry.isaacsteamsyncios.dylib "$(DYLIB)"; \
 	elif command -v ldid >/dev/null 2>&1; then \
 		ldid -S "$(DYLIB)"; \
 	fi
@@ -52,8 +52,8 @@ package: dylib
 	rm -rf "$(DEB_STAGE)"
 	mkdir -p "$(DEB_STAGE)/DEBIAN" "$(DEB_STAGE)/var/jb/Library/MobileSubstrate/DynamicLibraries"
 	cp "$(PROJECT_ROOT)/package/control" "$(DEB_STAGE)/DEBIAN/control"
-	cp "$(PROJECT_ROOT)/package/IsaacSteamCloudSynciOS.plist" "$(DEB_STAGE)/var/jb/Library/MobileSubstrate/DynamicLibraries/IsaacSteamCloudSynciOS.plist"
-	cp "$(DYLIB)" "$(DEB_STAGE)/var/jb/Library/MobileSubstrate/DynamicLibraries/IsaacSteamCloudSynciOS.dylib"
+	cp "$(PROJECT_ROOT)/package/IsaacSteamSynciOS.plist" "$(DEB_STAGE)/var/jb/Library/MobileSubstrate/DynamicLibraries/IsaacSteamSynciOS.plist"
+	cp "$(DYLIB)" "$(DEB_STAGE)/var/jb/Library/MobileSubstrate/DynamicLibraries/IsaacSteamSynciOS.dylib"
 	mkdir -p "$(PROJECT_ROOT)/packages"
 	dpkg-deb --root-owner-group --build "$(DEB_STAGE)" "$(DEB)"
 
@@ -69,6 +69,12 @@ audit: dylib
 	else \
 		echo "Portable dependency audit passed"; \
 	fi
+	@if otool -L "$(DYLIB)" | rg -i 'GameKit|GameCenter' || \
+		nm -u "$(DYLIB)" | rg -i 'GKAchievement|GKLocalPlayer|GameCenter'; then \
+		echo "ERROR: Game Center dependency detected"; exit 1; \
+	else \
+		echo "Save-only achievement audit passed (no Game Center dependency)"; \
+	fi
 
 release:
 	rm -rf "$(DIST)"
@@ -76,14 +82,14 @@ release:
 	$(MAKE) package EXTRA_CFLAGS='-Wall -Wextra -Werror'
 	$(MAKE) audit EXTRA_CFLAGS='-Wall -Wextra -Werror'
 	mkdir -p "$(DIST)"
-	cp "$(DYLIB)" "$(DIST)/IsaacSteamCloudSynciOS.dylib"
-	cp "$(DEB)" "$(DIST)/IsaacSteamCloudSynciOS-rootless.deb"
+	cp "$(DYLIB)" "$(DIST)/IsaacSteamSynciOS.dylib"
+	cp "$(DEB)" "$(DIST)/IsaacSteamSynciOS-rootless.deb"
 	cd "$(DIST)" && shasum -a 256 \
-		IsaacSteamCloudSynciOS.dylib \
-		IsaacSteamCloudSynciOS-rootless.deb > SHA256SUMS
+		IsaacSteamSynciOS.dylib \
+		IsaacSteamSynciOS-rootless.deb > SHA256SUMS
 
 clean:
 	cd "$(CORE_DIR)" && cargo clean
 	rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/package/stage" "$(DIST)"
 	find "$(PROJECT_ROOT)/packages" -maxdepth 1 \
-		\( -name 'IsaacCloudSync-rootless.deb' -o -name 'IsaacSteamCloudSynciOS-rootless.deb' \) -delete
+		\( -name 'IsaacCloudSync-rootless.deb' -o -name 'IsaacSteamCloudSynciOS-rootless.deb' -o -name 'IsaacSteamSynciOS-rootless.deb' \) -delete

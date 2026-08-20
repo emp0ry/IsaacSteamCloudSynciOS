@@ -9,7 +9,9 @@ const MAX_REPENTANCE_ACHIEVEMENT_ID: usize = 637;
 
 fn read_u32_le(bytes: &[u8], offset: usize) -> Result<u32> {
     let end = offset.checked_add(4).context("save offset overflow")?;
-    let raw = bytes.get(offset..end).context("truncated Isaac section header")?;
+    let raw = bytes
+        .get(offset..end)
+        .context("truncated Isaac section header")?;
     Ok(u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]))
 }
 
@@ -33,15 +35,21 @@ pub fn unlocked_achievement_ids_from_canonical(bytes: &[u8]) -> Result<BTreeSet<
         bail!("Isaac save is too small for the achievement section");
     }
 
-    // section metadata: index/type, byte-size metadata, entry count.
-    // We only need the count; the known entry width for achievement section 0 is 1.
+    let section_type = read_u32_le(bytes, SECTION_TABLE_OFFSET)?;
+    if section_type != 1 {
+        bail!("Isaac save does not begin with the achievement section");
+    }
+    let block_size = read_u32_le(bytes, SECTION_TABLE_OFFSET + 4)? as usize;
     let entry_count = read_u32_le(bytes, SECTION_TABLE_OFFSET + 8)? as usize;
-    let section_start = header_end;
-    let section_len = entry_count
+    let expected_block_size = entry_count
         .checked_mul(ACHIEVEMENT_ENTRY_SIZE)
         .context("achievement section size overflow")?;
+    if block_size != expected_block_size {
+        bail!("Isaac achievement section size/count mismatch");
+    }
+    let section_start = header_end;
     let section_end = section_start
-        .checked_add(section_len)
+        .checked_add(block_size)
         .context("achievement section end overflow")?;
     if section_end > bytes.len() {
         bail!("achievement section extends beyond the Isaac save");
@@ -69,6 +77,9 @@ mod tests {
     #[test]
     fn parses_one_based_achievement_bytes() {
         let mut bytes = vec![0u8; SECTION_TABLE_OFFSET + SECTION_HEADER_SIZE + 8];
+        bytes[SECTION_TABLE_OFFSET..SECTION_TABLE_OFFSET + 4].copy_from_slice(&1u32.to_le_bytes());
+        bytes[SECTION_TABLE_OFFSET + 4..SECTION_TABLE_OFFSET + 8]
+            .copy_from_slice(&8u32.to_le_bytes());
         bytes[SECTION_TABLE_OFFSET + 8..SECTION_TABLE_OFFSET + 12]
             .copy_from_slice(&8u32.to_le_bytes());
         let start = SECTION_TABLE_OFFSET + SECTION_HEADER_SIZE;
@@ -76,5 +87,20 @@ mod tests {
         bytes[start + 3] = 1;
         let ids = unlocked_achievement_ids_from_canonical(&bytes).unwrap();
         assert_eq!(ids.into_iter().collect::<Vec<_>>(), vec![1, 3]);
+    }
+
+    #[test]
+    #[ignore = "requires a private user-supplied save fixture"]
+    fn parses_private_external_fixture() {
+        let path = std::env::var("ISAAC_SAVE_FIXTURE")
+            .expect("set ISAAC_SAVE_FIXTURE to a private .dat path outside the repository");
+        let raw = std::fs::read(path).unwrap();
+        let ids = unlocked_achievement_ids(&raw).unwrap();
+        assert!(!ids.is_empty());
+        eprintln!(
+            "private save contains {} achievement unlocks; highest ID {:?}",
+            ids.len(),
+            ids.last()
+        );
     }
 }

@@ -27,15 +27,18 @@ message CMsgClientGetUserStatsResponse {
 	repeated .CMsgClientGetUserStatsResponse.Achievement_Blocks achievement_blocks = 6;
 }
 
-message CMsgClientStoreUserStats {
-	message Stats_To_Store {
+message CMsgClientStoreUserStats2 {
+	message Stats {
 		optional uint32 stat_id = 1;
 		optional uint32 stat_value = 2;
 	}
 
 	optional fixed64 game_id = 1;
-	optional bool explicit_reset = 2;
-	repeated .CMsgClientStoreUserStats.Stats_To_Store stats_to_store = 3;
+	optional fixed64 settor_steam_id = 2;
+	optional fixed64 settee_steam_id = 3;
+	optional uint32 crc_stats = 4;
+	optional bool explicit_reset = 5;
+	repeated .CMsgClientStoreUserStats2.Stats stats = 6;
 }
 
 message CMsgClientStoreUserStatsResponse {

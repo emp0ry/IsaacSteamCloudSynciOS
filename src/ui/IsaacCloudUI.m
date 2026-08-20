@@ -142,7 +142,7 @@ static NSDictionary *ICSFindSlot(NSArray *items, NSUInteger slot) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Isaac Steam Cloud iOS";
+    self.title = @"Isaac Steam Sync iOS";
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose target:self action:@selector(closePanel)];
     [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:@"cell"];
     [self refresh];
@@ -207,7 +207,7 @@ static NSDictionary *ICSFindSlot(NSArray *items, NSUInteger slot) {
     } else if (needsDeviceApproval && !self.guardPromptPresented) {
         self.guardPromptPresented = YES;
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self alert:@"Approve with Steam Mobile" message:@"Open the Steam app on your trusted phone and approve this sign-in. IsaacSteamCloudSynciOS will continue automatically."];
+            [self alert:@"Approve with Steam Mobile" message:@"Open the Steam app on your trusted phone and approve this sign-in. IsaacSteamSynciOS will continue automatically."];
         });
     } else if (!awaitingGuard) {
         self.guardPromptPresented = NO;
@@ -336,7 +336,7 @@ static NSDictionary *ICSFindSlot(NSArray *items, NSUInteger slot) {
         } else if ([action isEqualToString:@"Disconnect Steam Account"]) {
             [self confirm:@"Disconnect Steam?" message:@"The refresh token will be removed from Keychain. Local saves and backups remain." destructive:YES action:^{ ICSCoreDisconnectSteam(); }];
         } else if ([action isEqualToString:@"Sync Now"]) {
-            [self confirm:@"Sync iPhone and Steam now?" message:@"IsaacSteamCloudSynciOS compares iPhone, Steam, and the last common BASE. iPhone LZ4 data is converted to the normal Windows format before upload, the current Steam copy is backed up, and a true conflict is never overwritten automatically." destructive:NO action:^{ ICSCoreSyncNow("manual"); }];
+            [self confirm:@"Sync iPhone and Steam now?" message:@"IsaacSteamSynciOS compares iPhone, Steam, and the last common BASE. iPhone LZ4 data is converted to the normal Windows format before upload, the current Steam copy is backed up, and a true conflict is never overwritten automatically. It then compares native Isaac save achievements with Steam and adds only missing unlocks. Existing Steam achievements are never cleared, and Game Center is not used." destructive:NO action:^{ ICSCoreSyncNow("manual"); }];
         } else if ([action isEqualToString:@"Force Push…"]) {
             [self chooseSlotForLocal:YES];
         } else if ([action isEqualToString:@"Force Pull…"]) {
@@ -648,7 +648,7 @@ static void ICSInstallButton(void) {
     button.layer.borderWidth = invisible ? 0 : 1;
     button.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
     [button setTitle:invisible ? @"" : @"☁︎" forState:UIControlStateNormal];
-    button.accessibilityLabel = @"Open Isaac Steam Cloud iOS";
+    button.accessibilityLabel = @"Open Isaac Steam Sync iOS";
     [button addTarget:ICSButtonTarget.shared action:@selector(openPanel) forControlEvents:UIControlEventTouchUpInside];
     [window addSubview:button];
     button.hidden = !ICSGameMenuIsActive();

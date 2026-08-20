@@ -384,8 +384,8 @@ static void PublishObservation(bool gameplayActive) {
     int previous = gGameState.exchange(nextState);
     if (previous == nextState) return;
     ICSCoreLog("ui", gameplayActive
-        ? "gameplay detected; Steam Cloud settings hidden"
-        : "menu detected; Steam Cloud settings available");
+        ? "gameplay detected; Steam Sync settings hidden"
+        : "menu detected; Steam Sync settings available");
     dispatch_async(dispatch_get_main_queue(), ^{
         [NSNotificationCenter.defaultCenter postNotificationName:kGameStateChangedNotification
                                                           object:nil];

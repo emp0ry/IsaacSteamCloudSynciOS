@@ -23,6 +23,7 @@ pub enum EMsg {
     ClientGetUserStatsResponse = 819,
     ClientStoreUserStats = 820,
     ClientStoreUserStatsResponse = 821,
+    ClientStoreUserStats2 = 5466,
     ClientLogon = 5514,
     ClientPICSProductInfoRequest = 8903,
     ClientPICSProductInfoResponse = 8904,

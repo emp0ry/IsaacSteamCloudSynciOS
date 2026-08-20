@@ -1,18 +1,20 @@
-# IsaacSteamCloudSynciOS
+# IsaacSteamSynciOS
 
-Native two-way Steam Cloud synchronization for **The Binding of Isaac: Repentance on iOS**.
+Native Steam Cloud and achievement synchronization for **The Binding of Isaac: Repentance on iOS**.
 
-IsaacSteamCloudSynciOS connects directly to Steam from inside Isaac. It can
-pull the Steam version before play and publish a verified iPhone save when the
-user taps **Sync Now**. No desktop companion, Steam desktop client, server, JIT,
-or permanent background daemon is required.
+IsaacSteamSynciOS connects directly to Steam from inside Isaac. It can pull the
+Steam version before play, publish a verified iPhone save, and add native-save
+achievements that are still locked on Steam when the user taps **Sync Now**.
+It never clears an existing Steam achievement. No Game Center, desktop
+companion, Steam desktop client, server, JIT, or permanent background daemon is
+required.
 
 The same ARM64 synchronization core supports both installation modes:
 
 | Device | Release file |
 | --- | --- |
-| Jailbroken iPhone or iPad | `IsaacSteamCloudSynciOS-rootless.deb` |
-| Non-jailbroken iPhone or iPad | `IsaacSteamCloudSynciOS.dylib` |
+| Jailbroken iPhone or iPad | `IsaacSteamSynciOS-rootless.deb` |
+| Non-jailbroken iPhone or iPad | `IsaacSteamSynciOS.dylib` |
 
 The standalone dylib links only Apple system libraries. ElleKit is used only by
 the optional rootless package to load it into Isaac.
@@ -29,11 +31,13 @@ the optional rootless package to load it into Isaac.
 - Three-way synchronization using a last-known-common `BASE`
 - Automatic remote-only pull before Isaac opens progression
 - Explicit **Sync Now** publication for finished iPhone sessions
+- Additive Steam achievement sync from native Isaac persistent saves during
+  **Sync Now**; existing Steam unlocks are never cleared
 - First-sync and true-conflict choices that never guess a winner
 - Versioned local and remote backups with retention and restore
 - Same-directory atomic local replacement with final hash verification
 - Native UIKit account, sync, conflict, backup, log, and invisible-button UI
-- Menu-only cloud settings button and panel that hide automatically during a
+- Menu-only Steam Sync settings button and panel that hide automatically during a
   run and return after Isaac reaches a menu
 - Steam rich presence showing AppID `250900` while Isaac is active
 - Offline play without blocking game startup
@@ -62,6 +66,29 @@ core waits for a stable save, converts it to the canonical Windows format,
 backs up Steam, uploads, re-enumerates Cloud, and advances BASE only after the
 remote SHA-1 matches.
 
+## Achievement synchronization
+
+Achievement synchronization reads the achievement section directly from the
+three native `rep_persistentgamedata*.dat` files. It does not read or submit
+Game Center achievements.
+
+After a successful manual **Sync Now**, the core reads Steam's live AppID
+`250900` achievement schema and current user-stat values. For every Isaac
+achievement ID present in an iPhone save but still locked on Steam, it sets only
+the corresponding missing bit. Existing Steam stat-group values are preserved,
+`explicit_reset` is always false, and the result is read back from Steam for
+verification. If Steam omits the current value or CRC required for a safe
+additive update, the write is refused.
+
+The direction is intentionally one-way:
+
+| iPhone save | Steam | Result |
+| --- | --- | --- |
+| Unlocked | Locked | Add the missing unlock to Steam |
+| Unlocked | Unlocked | Nothing changes |
+| Locked | Unlocked | Keep the Steam unlock; never clear it |
+| Locked | Locked | Nothing changes |
+
 ## Compatibility
 
 - Steam AppID: `250900`
@@ -86,23 +113,23 @@ It synchronizes persistent progression, not a run currently in progress.
 
 ### Jailbroken devices
 
-Install `IsaacSteamCloudSynciOS-rootless.deb` with a package manager or `dpkg`,
+Install `IsaacSteamSynciOS-rootless.deb` with a package manager or `dpkg`,
 then restart Isaac. The package targets rootless ElleKit installations.
 
 ### Non-jailbroken devices
 
-Place `IsaacSteamCloudSynciOS.dylib` in the app's `Frameworks` directory, add
+Place `IsaacSteamSynciOS.dylib` in the app's `Frameworks` directory, add
 the following Mach-O load command to the main executable, then sign the complete
 application bundle:
 
 ```text
-@executable_path/Frameworks/IsaacSteamCloudSynciOS.dylib
+@executable_path/Frameworks/IsaacSteamSynciOS.dylib
 ```
 
 The included patcher automates the bundle and Mach-O changes:
 
 ```sh
-./tools/patch-ipa.sh Isaac.ipa Isaac-SteamCloud.ipa
+./tools/patch-ipa.sh Isaac.ipa Isaac-SteamSync.ipa
 ```
 
 The patcher expects a decrypted ARM64 Isaac IPA and produces an unsigned output
@@ -110,8 +137,8 @@ unless `SIGNING_IDENTITY` is supplied. It does not download or include Isaac.
 
 ```sh
 SIGNING_IDENTITY='Apple Development: Example' \
-ENTITLEMENTS="$PWD/tools/IsaacSteamCloudSynciOS.entitlements" \
-  ./tools/patch-ipa.sh Isaac.ipa Isaac-SteamCloud.ipa
+ENTITLEMENTS="$PWD/tools/IsaacSteamSynciOS.entitlements" \
+  ./tools/patch-ipa.sh Isaac.ipa Isaac-SteamSync.ipa
 ```
 
 No JIT, private entitlement, arbitrary executable memory, daemon, or jailbreak
@@ -171,8 +198,8 @@ make release
 Release artifacts are written to `dist/`:
 
 ```text
-IsaacSteamCloudSynciOS.dylib
-IsaacSteamCloudSynciOS-rootless.deb
+IsaacSteamSynciOS.dylib
+IsaacSteamSynciOS-rootless.deb
 SHA256SUMS
 ```
 
@@ -194,6 +221,9 @@ The release has been exercised on an iPhone14,4 running iOS 17.3.1:
 - rootless ElleKit injection and standalone embedded Mach-O loading;
 - QR/Steam Mobile, Steam Guard, credential login, and Keychain reconnect;
 - AppID 250900 enumeration, download, upload, commit, and Steam SHA-1 check;
+- save-only additive achievement synchronization, including a live update that
+  added one missing Steam unlock and an idempotent repeat with zero additions;
+- preservation verification confirming zero Steam achievements were cleared;
 - canonical Windows save upload after decoding the native iOS raw-LZ4 form;
 - first-sync backup and choice, remote-only prelaunch pull, manual Sync Now,
   atomic replacement, backup restore, and offline fallback;
@@ -201,8 +231,9 @@ The release has been exercised on an iPhone14,4 running iOS 17.3.1:
 - lifecycle operation without a launch daemon or jailbreak-only core symbols.
 
 The deterministic unchanged, local-only, remote-only, converged, first-sync,
-and conflict branches are covered by Rust tests. Public binaries are also
-checked for jailbreak-only dynamic dependencies.
+conflict, save parsing, additive stat-bit update, and achievement-preservation
+branches are covered by Rust tests. Public binaries are also checked for
+jailbreak-only and Game Center dynamic dependencies.
 
 ## Signing and DLC limitations
 
